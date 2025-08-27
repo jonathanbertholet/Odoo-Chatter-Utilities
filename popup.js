@@ -7,6 +7,8 @@
   const DOM = {
     hideChatter: document.getElementById('hideChatter'),
     displayBelow: document.getElementById('displayBelow'),
+    // New: hide on-page toggle button option
+    hideToggleButton: document.getElementById('hideToggleButton'),
     debugMode: document.getElementById('debugMode'),
     stylishSupportToggle: document.getElementById('stylishSupportToggle'),
     showDomainsToggle: document.getElementById('showDomainsToggle'),
@@ -88,6 +90,19 @@
         console.error('Invalid URL:', url, error);
         return 'App';
       }
+    },
+
+    /**
+     * Trims the .odoo.com suffix from a domain if present, except for odoo.com itself
+     * @param {string} domain - The domain to trim
+     * @returns {string} - The trimmed domain
+     */
+    trimOdooDomain(domain) {
+      // Special case for odoo.com
+      if (domain === 'www.odoo.com' || domain === 'odoo.com') {
+        return 'odoo.com';
+      }
+      return domain.replace('.odoo.com', '');
     },
   };
 
@@ -299,14 +314,13 @@
     async renderPins() {
       try {
         const pins = await PinManager.getPins();
-        DOM.pinsList.innerHTML = ''; // Clear existing pins
+        const { showDomains = true } = await StorageUtil.getLocal(['showDomains']);
+        DOM.pinsList.innerHTML = '';
 
         pins.forEach((pin) => {
           const button = document.createElement('div');
           button.className = 'pinned-button';
           button.dataset.url = pin.url;
-
-          // Add tooltip for the entire button
           button.title = pin.title;
 
           const appName = document.createElement('div');
@@ -317,9 +331,24 @@
           pageName.className = 'pinned-page-name';
           pageName.textContent = pin.title;
 
-          // Append app name and page name to the button
+          // Append basic elements
           button.appendChild(appName);
           button.appendChild(pageName);
+
+          // Add domain name display only if showDomains is true
+          if (showDomains) {
+            try {
+              const domain = Utils.trimOdooDomain(new URL(pin.url).hostname);
+              const domainDiv = document.createElement('div');
+              domainDiv.className = 'pinned-domain';
+              domainDiv.style.fontSize = '11px';
+              domainDiv.style.color = '#666';
+              domainDiv.textContent = domain;
+              button.appendChild(domainDiv);
+            } catch (error) {
+              console.error('Invalid URL:', pin.url, error);
+            }
+          }
 
           // Add the remove button
           this.addRemoveButton(button, pin);
@@ -329,7 +358,6 @@
             TabUtil.openUrlInCurrentTab(pin.url);
           });
 
-          // Append the button to the pins list
           DOM.pinsList.appendChild(button);
         });
 
@@ -431,7 +459,7 @@
           // Domain name displayed below the title if enabled
           if (showDomains) {
             try {
-              const domain = new URL(view.url).hostname;
+              const domain = Utils.trimOdooDomain(new URL(view.url).hostname);
               const domainDiv = document.createElement('div');
               domainDiv.className = 'recent-view-domain';
               domainDiv.style.fontSize = '11px';
@@ -461,6 +489,8 @@
         const syncResult = await StorageUtil.getSync([
           'hideChatter',
           'displayBelow',
+          // Load hideToggleButton initial state
+          'hideToggleButton',
           'debugMode',
           'stylishSupport',
         ]);
@@ -468,6 +498,7 @@
         const {
           hideChatter = false,
           displayBelow = false,
+          hideToggleButton = false,
           debugMode = false,
           stylishSupport = false,
         } = syncResult;
@@ -475,6 +506,8 @@
         DOM.hideChatter.checked = hideChatter;
         DOM.displayBelow.checked = displayBelow;
         DOM.hideChatter.disabled = displayBelow;
+        // Initialize new toggle
+        if (DOM.hideToggleButton) DOM.hideToggleButton.checked = hideToggleButton;
         DOM.debugMode.checked = debugMode;
         DOM.stylishSupportToggle.checked = stylishSupport;
 
@@ -552,6 +585,13 @@
         handleToggleChange(DOM.hideChatter, 'hideChatter');
       });
 
+      // New: persist hideToggleButton change
+      if (DOM.hideToggleButton) {
+        DOM.hideToggleButton.addEventListener('change', () => {
+          handleToggleChange(DOM.hideToggleButton, 'hideToggleButton');
+        });
+      }
+
       DOM.debugMode.addEventListener('change', () => {
         handleToggleChange(DOM.debugMode, 'debugMode');
       });
@@ -564,7 +604,9 @@
         'change',
         Utils.debounce(() => {
           handleToggleChange(DOM.showDomainsToggle, 'showDomains', () => {
+            // Update both recent views and pins when the toggle changes
             this.displayRecentViews();
+            this.renderPins();
           });
         }, 300)
       );

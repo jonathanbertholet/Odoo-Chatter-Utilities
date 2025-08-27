@@ -102,6 +102,37 @@
     window.dispatchEvent(new Event('resize'));
   }
 
+  // Utility: Wait for element helper
+  /**
+   * Waits for an element matching the selector to appear under the given root.
+   * Resolves early if the element already exists. Times out after the provided ms.
+   * @param {string} selector
+   * @param {ParentNode} [root=document]
+   * @param {number} [timeoutMs=3000]
+   * @returns {Promise<Element|null>}
+   */
+  function waitForElement(selector, root = document, timeoutMs = 3000) {
+    return new Promise(resolve => {
+      const existing = root.querySelector(selector);
+      if (existing) return resolve(existing);
+
+      const observer = new MutationObserver(() => {
+        const found = root.querySelector(selector);
+        if (found) {
+          observer.disconnect();
+          resolve(found);
+        }
+      });
+
+      observer.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+
+      const timeout = setTimeout(() => {
+        try { observer.disconnect(); } catch (e) {}
+        resolve(null);
+      }, timeoutMs);
+    });
+  }
+
   // Feature: Recent Views
   /**
    * Tracks the most recent view if on a form view. Inserts new views at the start of the list
@@ -151,11 +182,46 @@
     },
 
     /**
-     * Retrieves the chatter container element.
+     * Retrieves the chatter container element across multiple Odoo UI variants.
+     * Tries known containers first, then falls back to the inner chatter element.
      * @returns {HTMLElement|null}
      */
     getChatterContainer: function() {
-      return document.querySelector('.o-mail-ChatterContainer, .o_mail_chattercontainer');
+      // Primary containers used across Odoo versions
+      let container = document.querySelector('.o-mail-ChatterContainer');
+      if (container) return container;
+
+      // Legacy/alternative naming
+      container = document.querySelector('.o_mail_chattercontainer');
+      if (container) return container;
+
+      // Fallback: inner chatter element exists; return its closest container or itself
+      const innerChatter = document.querySelector('.o-mail-Chatter');
+      if (innerChatter) {
+        return innerChatter.closest('.o-mail-ChatterContainer, .o_mail_chattercontainer, .o-aside') || innerChatter;
+      }
+
+      return null;
+    },
+
+    /**
+     * Resolves the best parent container to host the toggle and layout classes.
+     * Falls back gracefully if the typical container is not found.
+     * @param {HTMLElement} chatterContainer
+     * @returns {HTMLElement|null}
+     */
+    getFormContainer: function(chatterContainer) {
+      if (!chatterContainer) return null;
+      // Preferred: the direct wrapper inside the content area
+      let formContainer = chatterContainer.closest('.o_content > div');
+      if (formContainer) return formContainer;
+
+      // Alternative: the content area itself
+      formContainer = chatterContainer.closest('.o_content');
+      if (formContainer) return formContainer;
+
+      // As a last resort, use the immediate parent so we can still insert the toggle
+      return chatterContainer.parentElement || null;
     },
 
     /**
@@ -191,12 +257,15 @@
       formContainer.insertBefore(toggleButton, chatterContainer);
 
       // Retrieve settings for chatter display preferences
-      getSettings(['hideChatter', 'displayBelow']).then(settings => {
+      // Read user settings, including the new option to hide the on-page toggle button
+      getSettings(['hideChatter', 'displayBelow', 'hideToggleButton']).then(settings => {
         const shouldDisplayBelow = settings.displayBelow ?? false;
         const defaultHidden = settings.hideChatter ?? false;
+        const shouldHideToggleButton = settings.hideToggleButton ?? false;
 
-        // Show or hide the toggle button based on displayBelow
-        toggleButton.style.display = !shouldDisplayBelow ? 'flex' : 'none';
+        // Show or hide the toggle button based on layout and user preference
+        // If displayBelow is enabled, the toggle is not relevant. Otherwise allow hiding by user setting
+        toggleButton.style.display = (!shouldDisplayBelow && !shouldHideToggleButton) ? 'flex' : 'none';
 
         if (shouldDisplayBelow) {
           formContainer.classList.add('vertical-layout');
@@ -241,15 +310,24 @@
      * Initializes the chatter manager by inserting or removing the toggle button based on the page.
      */
     init: function() {
-      if (this.isRelevantPage()) {
-        const chatterContainer = this.getChatterContainer();
-        const formContainer = chatterContainer?.closest('.o_content > div');
-        if (formContainer && chatterContainer) {
-          this.insertToggleButton(formContainer, chatterContainer);
+      const foundNow = this.getChatterContainer();
+      if (foundNow) {
+        const formContainer = this.getFormContainer(foundNow);
+        if (formContainer) {
+          this.insertToggleButton(formContainer, foundNow);
         }
-      } else {
-        this.removeToggleButton();
+        return;
       }
+
+      // If not found yet, wait briefly for dynamic load and try again
+      waitForElement('.o-mail-ChatterContainer, .o_mail_chattercontainer, .o-mail-Chatter', document, 5000)
+        .then(() => {
+          const chatterContainer = this.getChatterContainer();
+          const formContainer = this.getFormContainer(chatterContainer);
+          if (formContainer && chatterContainer) {
+            this.insertToggleButton(formContainer, chatterContainer);
+          }
+        });
     },
 
     /**
@@ -294,7 +372,12 @@
         toggleButton.style.display = 'none';
       } else {
         formContainer.classList.remove('vertical-layout');
-        toggleButton.style.display = 'flex';
+        // Respect user preference to hide the toggle when not below
+        getSetting('hideToggleButton').then(hideToggle => {
+          toggleButton.style.display = hideToggle ? 'none' : 'flex';
+        }).catch(() => {
+          toggleButton.style.display = 'flex';
+        });
         const isHidden = chatterContainer.classList.contains('hidden');
         formContainer.classList.toggle('centered-form', isHidden);
         toggleButton.classList.toggle('active', !isHidden);
@@ -357,7 +440,8 @@
   function isSlideUrl() {
     return window.location.pathname.includes('/slides/') ||
            window.location.href.includes('odoo.com/help') ||
-           window.location.pathname.includes('/odoo/website/');
+           window.location.pathname.includes('/odoo/website/') ||
+           window.location.pathname.includes('/odoo/knowledge/');
   }
 
   /**
@@ -525,7 +609,7 @@
     });
   }
 
-  // Feature: Keyboard Shortcut Manager (Shortened Version)
+  // Feature: Keyboard Shortcut Manager with fallback when toggle button is hidden/missing
   const initKeyboardShortcut = () => {
     document.addEventListener('keydown', e => {
       const isMac = navigator.platform.toUpperCase().includes('MAC');
@@ -535,8 +619,26 @@
       ) {
         e.preventDefault();
         const toggleButton = document.querySelector('.chatter-toggle');
-        if (toggleButton) {
+        let toggled = false;
+
+        // If the toggle button exists and is visible, prefer clicking it
+        if (toggleButton && toggleButton.offsetParent !== null) {
           toggleButton.click();
+          toggled = true;
+        } else {
+          // Fallback: directly toggle the chatter container
+          const chatterContainer = chatterManager.getChatterContainer();
+          const formContainer = chatterManager.getFormContainer(chatterContainer);
+          if (chatterContainer && formContainer && !formContainer.classList.contains('vertical-layout')) {
+            const isHidden = chatterContainer.classList.toggle('hidden');
+            formContainer.classList.toggle('centered-form', isHidden);
+            if (toggleButton) toggleButton.classList.toggle('active', !isHidden);
+            triggerResize();
+            toggled = true;
+          }
+        }
+
+        if (toggled) {
           // Temporary tooltip to indicate action
           const tooltip = document.createElement('div');
           tooltip.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(135,90,123,0.9);color:#fff;padding:8px 16px;border-radius:4px;z-index:1001;font-size:13px;pointer-events:none;transition:opacity .3s';
@@ -614,14 +716,22 @@
     }
   }, CONFIG.THROTTLE_INTERVAL));
 
-  // Start observing DOM changes
-  chatterObserver.observe(document, {
-    subtree: true,
-    childList: true,
-    attributes: true,
-    attributeFilter: ['href', 'data-action'],
-    characterData: false
-  });
+  // Start observing DOM changes with a scoped root when possible to reduce noise
+  const startObserving = () => {
+    try {
+      chatterObserver.disconnect();
+    } catch (e) {}
+
+    const preferredRoot = document.querySelector('.o_web_client, .o_action_manager, main, .o_content, body > div.o_action_manager') || document;
+    chatterObserver.observe(preferredRoot, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['href', 'data-action'],
+      characterData: false
+    });
+  };
+  startObserving();
 
   // Clean-up observer on unload
   function disconnectObservers() {
@@ -639,12 +749,16 @@
       setTimeout(() => {
         triggerResize();
       }, 500);
+      // After initial load, start listening to SPA navigation changes
+      installNavigationHooks();
     });
   } else {
     chatterManager.init();
     setTimeout(() => {
       triggerResize();
     }, 500);
+    // Ensure hooks exist even on already-loaded documents
+    installNavigationHooks();
   }
 
   // Listen for storage changes to update support page styling and debug mode
@@ -655,10 +769,55 @@
     if (changes.debugMode) {
       handleDebugModeChange(changes.debugMode.newValue);
     }
+    // New: react to hideToggleButton updates to show/hide the on-page toggle live
+    if (changes.hideToggleButton) {
+      const toggleButton = document.querySelector('.chatter-toggle');
+      const chatterContainer = chatterManager.getChatterContainer();
+      const formContainer = chatterContainer?.closest('.o_content > div');
+      if (toggleButton && formContainer && chatterContainer) {
+        const isBelow = formContainer.classList.contains('vertical-layout');
+        if (!isBelow) {
+          const shouldHide = !!changes.hideToggleButton.newValue;
+          toggleButton.style.display = shouldHide ? 'none' : 'flex';
+        }
+      }
+    }
   });
 
   // Apply support page styling on load if on support page
   if (isSupportPage()) {
     handleSupportPageStyling();
+  }
+
+  /**
+   * Install hooks to detect SPA navigations so we can re-run initialization
+   * when Odoo dynamically swaps views without full reloads.
+   */
+  function installNavigationHooks() {
+    // Avoid double-installation
+    if (window.__chatterNavHooksInstalled) return;
+    window.__chatterNavHooksInstalled = true;
+
+    const reinit = () => {
+      debouncedInit();
+      setTimeout(() => triggerResize(), 100);
+    };
+
+    // Patch history methods
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    history.pushState = function(...args) {
+      const result = originalPushState.apply(this, args);
+      reinit();
+      return result;
+    };
+    history.replaceState = function(...args) {
+      const result = originalReplaceState.apply(this, args);
+      reinit();
+      return result;
+    };
+
+    // Listen for back/forward
+    window.addEventListener('popstate', reinit);
   }
 })();

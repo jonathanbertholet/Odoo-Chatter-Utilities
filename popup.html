@@ -99,10 +99,22 @@
           </label>
         </div>
 
+        <!-- New: option to hide the on-page toggle button and rely on keyboard shortcut only -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-title">Hide toggle button</span>
+            <div class="setting-description">Hide the chatter toggle button on the page; use the keyboard shortcut only</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="hideToggleButton">
+            <span class="slider"></span>
+          </label>
+        </div>
+
         <div class="setting-row">
           <div class="setting-info">
             <span class="setting-title">Permanent Debug mode</span>
-            <div class="setting-description"><b>Important :</b> Conflict with the "Odoo Debug" extension. You can uninstall it.</div>
+            <div class="setting-description">Enable debug mode permanently</div>
           </div>
           <label class="switch">
             <input type="checkbox" id="debugMode">
@@ -124,8 +136,8 @@
         <!-- toggle to display or hide the domain in recent views -->
         <div class="setting-row">
           <div class="setting-info">
-            <span class="setting-title">Display domain in recent views</span>
-            <div class="setting-description">Toggle display of the domain name in recent views</div>
+            <span class="setting-title">Display domain in recent views & Pins</span>
+            <div class="setting-description">For multi-domain users</div>
           </div>
           <label class="switch">
             <!-- The id="showDomainsToggle" will be referenced in popup.js -->
