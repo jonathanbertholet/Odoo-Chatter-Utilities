@@ -3,6 +3,31 @@
   display: none !important;
 }
 
+/* Theme-aware tokens — follow Odoo surfaces (--body-bg, not Bootstrap --bs-body-bg) */
+:root {
+  --chatter-ext-accent: #875A7B;
+  --chatter-ext-surface: color-mix(in srgb, var(--body-bg, #f9fafb) 92%, transparent);
+  --chatter-ext-surface-solid: var(--body-bg, #f9fafb);
+  --chatter-ext-border: color-mix(in srgb, var(--border-color, #dee2e6) 85%, transparent);
+  --chatter-ext-text-muted: var(--secondary-color, #666);
+  --chatter-ext-shadow: color-mix(in srgb, var(--body-color, #000) 10%, transparent);
+  --chatter-ext-handle: color-mix(in srgb, var(--chatter-ext-accent) 35%, transparent);
+  --chatter-ext-handle-hover: color-mix(in srgb, var(--chatter-ext-accent) 80%, transparent);
+  --chatter-ext-accent-soft: color-mix(in srgb, var(--chatter-ext-accent) 15%, transparent);
+  --chatter-ext-accent-hover: color-mix(in srgb, var(--chatter-ext-accent) 30%, transparent);
+}
+
+/* JS-mirrored tokens when Odoo dark stylesheet loads after our content CSS */
+:root[data-chatter-ext-theme="dark"] .chatter-collapsed-rail {
+  background: var(--chatter-ext-surface, color-mix(in srgb, #1b1d26 92%, transparent));
+  border-color: var(--chatter-ext-border, #3c3e4b);
+  box-shadow: -2px 0 10px color-mix(in srgb, #e4e4e4 10%, transparent);
+}
+
+:root[data-chatter-ext-theme="dark"] .chatter-collapsed-action {
+  color: var(--chatter-ext-text-muted, rgba(228, 228, 228, 0.75));
+}
+
 /* Chatter toggle — lives in the Odoo chatter topbar when open */
 .chatter-toggle {
   display: inline-flex;
@@ -34,7 +59,7 @@
 }
 
 .chatter-toggle.topbar-mode:hover {
-  color: #875A7B;
+  color: var(--chatter-ext-accent);
 }
 
 /* Collapsed mode: small tab on the form edge when chatter is hidden */
@@ -53,8 +78,9 @@
   min-height: 100%;
   z-index: 10;
   border-radius: 6px 0 0 6px;
-  background: rgba(249, 250, 251, 0.96);
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.08);
+  background: var(--chatter-ext-surface);
+  border: 1px solid var(--chatter-ext-border);
+  box-shadow: -2px 0 10px var(--chatter-ext-shadow);
 }
 
 .chatter-collapsed-rail.is-collapsed {
@@ -80,7 +106,7 @@
   right: auto;
   margin-left: 4px;
   border-radius: 6px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 10px var(--chatter-ext-shadow);
   min-height: 100%;
 }
 
@@ -101,14 +127,14 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #666;
+  color: var(--chatter-ext-text-muted);
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .chatter-collapsed-action:hover {
-  background: rgba(135, 90, 123, 0.12);
-  color: #875A7B;
+  background: var(--chatter-ext-accent-soft);
+  color: var(--chatter-ext-accent);
 }
 
 .chatter-collapsed-action svg {
@@ -122,12 +148,12 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: rgba(135, 90, 123, 0.15);
-  color: #875A7B;
+  background: var(--chatter-ext-accent-soft);
+  color: var(--chatter-ext-accent);
 }
 
 .chatter-toggle.collapsed-mode:hover {
-  background: rgba(135, 90, 123, 0.3);
+  background: var(--chatter-ext-accent-hover);
 }
 
 .chatter-toggle-icon {
@@ -157,9 +183,12 @@
   transform: rotate(180deg);
 }
 
-/* Hide toggle UI when chatter is stacked below the form */
+/* Hide extension UI when chatter is stacked below the form */
 .vertical-layout .chatter-toggle,
-.vertical-layout .chatter-collapsed-rail {
+.vertical-layout .chatter-collapsed-rail,
+.chatter-native-below .chatter-toggle,
+.chatter-native-below .chatter-collapsed-rail,
+.chatter-native-below .chatter-resize-handle {
   display: none !important;
 }
 
@@ -325,7 +354,7 @@
   align-self: stretch;
   transform: none;
   border-radius: 6px 0 0 6px;
-  background: rgba(135, 90, 123, 0.08);
+  background: var(--chatter-ext-accent-soft);
 }
 
 .chatter-resize-handle.in-rail::after {
@@ -336,12 +365,12 @@
   height: 100%;
   max-height: none;
   border-radius: 0;
-  background: rgba(135, 90, 123, 0.3);
+  background: var(--chatter-ext-handle);
 }
 
 .chatter-resize-handle.in-rail:hover::after,
 .chatter-resize-handle.in-rail.is-dragging::after {
-  background: rgba(135, 90, 123, 0.65);
+  background: var(--chatter-ext-handle-hover);
 }
 
 .chatter-resize-handle::after {
@@ -353,13 +382,13 @@
   width: 3px;
   height: 48px;
   border-radius: 3px;
-  background: rgba(135, 90, 123, 0.35);
+  background: var(--chatter-ext-handle);
   transition: background 0.2s ease;
 }
 
 .chatter-resize-handle:hover::after,
 .chatter-resize-handle.is-dragging::after {
-  background: rgba(135, 90, 123, 0.8);
+  background: var(--chatter-ext-handle-hover);
 }
 
 body.chatter-resize-active {
@@ -367,7 +396,8 @@ body.chatter-resize-active {
   user-select: none !important;
 }
 
-.vertical-layout .chatter-resize-handle {
+.vertical-layout .chatter-resize-handle,
+.chatter-native-below .chatter-resize-handle {
   display: none !important;
 }
 

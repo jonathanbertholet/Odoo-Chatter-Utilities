@@ -117,6 +117,124 @@
     };
   }
 
+  /**
+   * Parses an rgb/rgba color string into channel values.
+   * @param {string} color
+   * @returns {{ r: number, g: number, b: number }|null}
+   */
+  function parseRgbColor(color) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return null;
+    return { r: +match[1], g: +match[2], b: +match[3] };
+  }
+
+  /**
+   * Returns relative luminance (0–1) for a simple dark-surface check.
+   * @param {{ r: number, g: number, b: number }} rgb
+   * @returns {number}
+   */
+  function relativeLuminance(rgb) {
+    return (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+  }
+
+  /**
+   * Detects Odoo's active color scheme from CSS variables and the web client shell.
+   * @returns {'dark'|'light'}
+   */
+  function detectOdooTheme() {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const schemeVar = rootStyle.getPropertyValue('--o-webclient-color-scheme').trim().toLowerCase();
+    if (schemeVar === 'dark') return 'dark';
+    if (schemeVar === 'bright' || schemeVar === 'light') return 'light';
+
+    const webClient = document.querySelector('.o_web_client');
+    if (webClient) {
+      const clientStyle = getComputedStyle(webClient);
+      if (clientStyle.colorScheme === 'dark') return 'dark';
+      const bg = parseRgbColor(clientStyle.backgroundColor);
+      if (bg && relativeLuminance(bg) < 0.45) return 'dark';
+    }
+
+    const bodyBg = rootStyle.getPropertyValue('--body-bg').trim();
+    if (bodyBg.startsWith('#') && bodyBg.length >= 7) {
+      const hex = bodyBg.slice(1);
+      const rgb = {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+      };
+      if (relativeLuminance(rgb) < 0.45) return 'dark';
+    }
+
+    return 'light';
+  }
+
+  /**
+   * Mirrors Odoo theme tokens onto extension UI variables so the rail matches the app.
+   */
+  function syncExtensionTheme() {
+    const root = document.documentElement;
+    const rootStyle = getComputedStyle(root);
+    const theme = detectOdooTheme();
+
+    root.dataset.chatterExtTheme = theme;
+
+    const bodyBg = rootStyle.getPropertyValue('--body-bg').trim();
+    const borderColor = rootStyle.getPropertyValue('--border-color').trim();
+    const secondaryColor = rootStyle.getPropertyValue('--secondary-color').trim();
+    const bodyColor = rootStyle.getPropertyValue('--body-color').trim();
+
+    if (bodyBg) {
+      root.style.setProperty('--chatter-ext-surface', `color-mix(in srgb, ${bodyBg} 92%, transparent)`);
+      root.style.setProperty('--chatter-ext-surface-solid', bodyBg);
+    }
+    if (borderColor) {
+      root.style.setProperty('--chatter-ext-border', `color-mix(in srgb, ${borderColor} 85%, transparent)`);
+    }
+    if (secondaryColor) {
+      root.style.setProperty('--chatter-ext-text-muted', secondaryColor);
+    }
+    if (bodyColor) {
+      root.style.setProperty('--chatter-ext-shadow', `color-mix(in srgb, ${bodyColor} 10%, transparent)`);
+    }
+  }
+
+  /**
+   * Re-sync extension theme when Odoo switches stylesheets or updates the web client shell.
+   */
+  function installThemeWatchers() {
+    if (window.__chatterThemeWatchersInstalled) return;
+    window.__chatterThemeWatchersInstalled = true;
+
+    const debouncedSync = debounce(syncExtensionTheme, 100);
+    syncExtensionTheme();
+
+    const webClient = document.querySelector('.o_web_client');
+    if (webClient) {
+      new MutationObserver(debouncedSync).observe(webClient, {
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+      });
+    }
+
+    new MutationObserver(debouncedSync).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-theme', 'data-color-scheme'],
+    });
+
+    // Odoo swaps web.assets_web vs web.assets_web_dark stylesheets on theme change
+    new MutationObserver((mutations) => {
+      const stylesheetChanged = mutations.some((mutation) => (
+        [...mutation.addedNodes].some((node) => node.tagName === 'LINK' || node.tagName === 'STYLE')
+      ));
+      if (stylesheetChanged) debouncedSync();
+    }).observe(document.head, { childList: true });
+
+    document.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+      link.addEventListener('load', debouncedSync);
+    });
+  }
+
   // Utility: Chrome Storage Helpers (Promisified)
   /**
    * Gets a single setting from chrome storage.
@@ -316,6 +434,91 @@
     },
 
     /**
+     * True when Odoo renders chatter below the form (e.g. accounting invoices with PDF aside).
+     * @param {HTMLElement} chatterContainer
+     * @returns {boolean}
+     */
+    isNativeBelowChatterLayout: function(chatterContainer) {
+      if (!chatterContainer) return false;
+
+      // Odoo COMBO layout: chatter cloned into the sheet background, not the aside column
+      if (chatterContainer.classList.contains('o-isInFormSheetBg')) return true;
+
+      const layoutRoot = chatterContainer.closest('.o_content, .o_form_view');
+      const hasAttachmentPreview = !!layoutRoot?.querySelector('.o_attachment_preview:not(.hidden)');
+
+      // PDF preview occupies the aside — mail chatter sits below the form instead
+      if (hasAttachmentPreview && !chatterContainer.classList.contains('o-aside')) {
+        return true;
+      }
+
+      // Chatter nested under the sheet without aside positioning
+      if (!chatterContainer.classList.contains('o-aside') && chatterContainer.closest('.o_form_sheet_bg')) {
+        return true;
+      }
+
+      return false;
+    },
+
+    /**
+     * Side-aside controls vs stacked-below (user setting or Odoo-native layout).
+     * @param {HTMLElement} chatterContainer
+     * @param {boolean} displayBelowSetting
+     * @returns {boolean}
+     */
+    shouldUseBelowLayout: function(chatterContainer, displayBelowSetting) {
+      return !!displayBelowSetting || this.isNativeBelowChatterLayout(chatterContainer);
+    },
+
+    /**
+     * True when the extension should stay passive (no aside rail / resize handle).
+     * @param {HTMLElement} formContainer
+     * @param {HTMLElement} [chatterContainer]
+     * @returns {boolean}
+     */
+    isBelowLayoutActive: function(formContainer, chatterContainer) {
+      if (!formContainer) return false;
+      return formContainer.classList.contains('vertical-layout')
+        || formContainer.classList.contains('chatter-native-below')
+        || this.isNativeBelowChatterLayout(chatterContainer);
+    },
+
+    /**
+     * Applies stacked-below layout — skips aside rail, resize handle, and fold behavior.
+     * @param {HTMLElement} formContainer
+     * @param {HTMLElement} chatterContainer
+     * @param {HTMLElement} rail
+     * @param {HTMLButtonElement} toggleButton
+     * @param {boolean} stretchFormWhenFolded
+     */
+    applyBelowLayoutMode: function(formContainer, chatterContainer, rail, toggleButton, stretchFormWhenFolded) {
+      const isNativeBelow = this.isNativeBelowChatterLayout(chatterContainer);
+
+      // User "display below" reshapes the form row; native Odoo layouts already stack chatter
+      formContainer.classList.toggle('vertical-layout', !isNativeBelow);
+      formContainer.classList.toggle('chatter-native-below', isNativeBelow);
+      formContainer.classList.remove('centered-form', 'stretch-form');
+      chatterContainer.classList.remove('hidden', 'chatter-width-managed');
+      chatterContainer.classList.remove('standard', 'medium', 'large');
+      chatterContainer.style.removeProperty('--chatter-panel-width');
+      formContainer.style.removeProperty('--chatter-panel-width');
+
+      // Also clear side-layout classes from the outer form row (e.g. after SPA navigation)
+      const formRow = chatterContainer.closest('.o_content > div');
+      if (formRow && formRow !== formContainer) {
+        formRow.classList.remove('centered-form', 'stretch-form', 'vertical-layout');
+        formRow.style.removeProperty('--chatter-panel-width');
+      }
+
+      this.hideChatterToggle(rail, toggleButton);
+      this.removeResizeHandle(formContainer);
+      if (formRow) this.removeResizeHandle(formRow);
+      if (rail) rail.__stretchFormWhenFolded = !!stretchFormWhenFolded;
+      this.applyFormStretch(formContainer, false, stretchFormWhenFolded);
+      this.syncResizeHandlePlacement(formContainer, chatterContainer);
+    },
+
+    /**
      * Scores chatter candidates so form-view aside panels win over incidental chatters.
      * @param {HTMLElement} element
      * @returns {number}
@@ -325,12 +528,19 @@
 
       if (element.closest('.o_form_view')) score += 100;
       if (element.classList.contains('o-mail-Form-chatter')) score += 50;
+      if (element.classList.contains('o-isInFormSheetBg')) score += 70;
       if (element.querySelector('.o-mail-Chatter-topbar')) score += 40;
       if (element.querySelector('.o-mail-Chatter-sendMessage, .o-mail-Chatter-logNote')) score += 30;
       if (element.classList.contains('o-aside')) score += 20;
 
       const rect = element.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) score += 25;
+
+      const layoutRoot = element.closest('.o_content, .o_form_view');
+      if (element.classList.contains('o-aside')
+          && layoutRoot?.querySelector('.o_attachment_preview:not(.hidden)')) {
+        score -= 120;
+      }
 
       if (element.closest('.o_account_report, .o_bank_reconciliation_container, .o_document_view')) {
         score -= 40;
@@ -381,17 +591,6 @@
      * @returns {HTMLElement|null}
      */
     getChatterContainer: function() {
-      // Fast path: standard form layout keeps chatter beside the sheet
-      const formRow = document.querySelector('.o_action_manager .o_content > div, .o_content > div');
-      if (formRow) {
-        for (const selector of CHATTER.CONTAINER_SELECTORS) {
-          const candidate = formRow.querySelector(selector);
-          if (candidate && this.isValidChatterContainer(candidate)) {
-            return candidate;
-          }
-        }
-      }
-
       return this.findChatterContainers()[0] || null;
     },
 
@@ -464,6 +663,7 @@
       }
 
       this.insertToggleButton(formContainer, chatterContainer);
+      syncExtensionTheme();
     },
 
     /**
@@ -474,6 +674,13 @@
      */
     getFormContainer: function(chatterContainer) {
       if (!chatterContainer) return null;
+
+      // Below-layout chatter sits inside the sheet — don't anchor UI to the PDF aside row
+      if (this.isNativeBelowChatterLayout(chatterContainer)) {
+        const sheetBg = chatterContainer.closest('.o_form_sheet_bg');
+        if (sheetBg) return sheetBg;
+      }
+
       // Preferred: the direct wrapper inside the content area
       let formContainer = chatterContainer.closest('.o_content > div');
       if (formContainer) return formContainer;
@@ -598,7 +805,8 @@
     applyFormStretch: function(formContainer, isChatterHidden, stretchFormWhenFolded) {
       if (!formContainer) return;
 
-      const isVerticalLayout = formContainer.classList.contains('vertical-layout');
+      const isVerticalLayout = formContainer.classList.contains('vertical-layout')
+        || formContainer.classList.contains('chatter-native-below');
       const shouldStretch = !!stretchFormWhenFolded && (isVerticalLayout || !!isChatterHidden);
 
       formContainer.classList.toggle('stretch-form', shouldStretch);
@@ -660,7 +868,8 @@
      */
     applyChatterWidthPx: function(px, formContainer, chatterContainer) {
       if (!chatterContainer || !formContainer) return;
-      if (formContainer.classList.contains('vertical-layout')) return;
+      if (formContainer.classList.contains('vertical-layout')
+          || this.isBelowLayoutActive(formContainer, chatterContainer)) return;
       if (chatterContainer.classList.contains('hidden')) return;
 
       const limits = this.getChatterWidthLimits(formContainer);
@@ -696,7 +905,7 @@
       if (!handle || !formContainer) return;
 
       const rail = this.getChatterRail();
-      const isVertical = formContainer.classList.contains('vertical-layout');
+      const isVertical = this.isBelowLayoutActive(formContainer, chatterContainer);
       const isHidden = chatterContainer?.classList.contains('hidden');
 
       if (isVertical) {
@@ -774,7 +983,8 @@
      * @param {HTMLElement} handle
      */
     startChatterResize: function(event, formContainer, chatterContainer, handle) {
-      if (formContainer.classList.contains('vertical-layout')) return;
+      if (formContainer.classList.contains('vertical-layout')
+          || this.isBelowLayoutActive(formContainer, chatterContainer)) return;
 
       const limits = this.getChatterWidthLimits(formContainer);
       const rail = this.getChatterRail();
@@ -995,17 +1205,12 @@
         // Cache preference so toggling stays synchronous without storage reads
         rail.__stretchFormWhenFolded = stretchFormWhenFolded;
 
-        if (shouldDisplayBelow) {
-          formContainer.classList.add('vertical-layout');
-          chatterContainer.classList.remove('hidden');
-          formContainer.classList.remove('centered-form');
-          this.applyFormStretch(formContainer, false, stretchFormWhenFolded);
-          this.hideChatterToggle(rail, toggleButton);
-          this.syncResizeHandlePlacement(formContainer, chatterContainer);
+        if (this.shouldUseBelowLayout(chatterContainer, shouldDisplayBelow)) {
+          this.applyBelowLayoutMode(formContainer, chatterContainer, rail, toggleButton, stretchFormWhenFolded);
           return;
         }
 
-        formContainer.classList.remove('vertical-layout');
+        formContainer.classList.remove('vertical-layout', 'chatter-native-below');
 
         this.setChatterCollapsedState(formContainer, chatterContainer, rail, !!defaultHidden);
 
@@ -1132,19 +1337,16 @@
      */
     handleDisplayBelowChange: function(isBelow, formContainer, chatterContainer, toggleButton) {
       const rail = this.getChatterRail();
-      if (isBelow) {
-        formContainer.classList.add('vertical-layout');
-        chatterContainer.classList.remove('hidden');
-        formContainer.classList.remove('centered-form');
-        this.hideChatterToggle(rail, toggleButton);
-        this.syncResizeHandlePlacement(formContainer, chatterContainer);
+      const useBelowLayout = this.shouldUseBelowLayout(chatterContainer, isBelow);
 
+      if (useBelowLayout) {
         getSetting('stretchFormWhenFolded').then((stretch) => {
-          if (rail) rail.__stretchFormWhenFolded = !!stretch;
-          this.applyFormStretch(formContainer, false, stretch);
+          this.applyBelowLayoutMode(formContainer, chatterContainer, rail, toggleButton, !!stretch);
         }).catch(console.error);
-      } else {
-        formContainer.classList.remove('vertical-layout');
+        return;
+      }
+
+      formContainer.classList.remove('vertical-layout', 'chatter-native-below');
 
         const isHidden = chatterContainer.classList.contains('hidden');
         if (rail) {
@@ -1161,7 +1363,6 @@
           if (rail) rail.__stretchFormWhenFolded = !!stretch;
           this.applyFormStretch(formContainer, isHidden, stretch);
         }).catch(console.error);
-      }
     },
 
     /**
@@ -1173,6 +1374,16 @@
      */
     handleHideChatterChange: function(isHidden, formContainer, chatterContainer, toggleButton) {
       const rail = this.getChatterRail();
+
+      // Below-layout views (including accounting PDF combo) toggle visibility directly
+      if (chatterManager.isBelowLayoutActive(formContainer, chatterContainer)) {
+        chatterContainer.classList.toggle('hidden', isHidden);
+        getSetting('stretchFormWhenFolded').then((stretch) => {
+          this.applyFormStretch(formContainer, isHidden, stretch);
+        }).catch(console.error);
+        return;
+      }
+
       if (rail) {
         this.setChatterCollapsedState(formContainer, chatterContainer, rail, isHidden);
         return;
@@ -1522,7 +1733,7 @@
 
     const chatterContainer = chatterManager.getChatterContainer();
     const formContainer = chatterManager.getFormContainer(chatterContainer);
-    if (!chatterContainer || !formContainer || formContainer.classList.contains('vertical-layout')) {
+    if (!chatterContainer || !formContainer || chatterManager.isBelowLayoutActive(formContainer, chatterContainer)) {
       return false;
     }
 
@@ -1685,6 +1896,7 @@
   // Replace immediate call with DOMContentLoaded handler for proper initialization
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
+      installThemeWatchers();
       installDebugModeWatchers();
       chatterManager.init();
       setTimeout(() => {
@@ -1694,6 +1906,7 @@
       installNavigationHooks();
     });
   } else {
+    installThemeWatchers();
     installDebugModeWatchers();
     chatterManager.init();
     setTimeout(() => {
@@ -1773,6 +1986,7 @@
     const reinit = () => {
       debouncedInit();
       debouncedDebugCheck();
+      syncExtensionTheme();
       setTimeout(() => triggerResize(), 100);
     };
 
