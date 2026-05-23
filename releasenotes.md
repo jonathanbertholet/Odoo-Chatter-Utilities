@@ -1,5 +1,15 @@
 Release notes :
 
+V2.0.3
+- Fix chevron missing in folded mode after native below-chatter detection
+- Fix drag-to-unfold snapping closed immediately (layout refresh no longer resets fold state)
+- Layout sync only re-inits rail when Odoo switches between side-aside and below placement
+
+V2.0.2
+- Extension stays passive when Odoo natively stacks chatter below the form (narrow windows, COMBO, invoice PDF layouts)
+- Toggle, chevron, and resize handle no longer appear when Odoo uses BOTTOM_CHATTER instead of side-aside placement
+- Layout re-syncs automatically on viewport resize when Odoo flips between side and below chatter
+
 V2.0
 - Chatter toggle moved into the Odoo chatter top bar
 - Drag handle to resize form/chatter split; auto-folds when too narrow

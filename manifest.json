@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Odoo Chatter Utilities",
-  "version": "2.0",
+  "version": "2.0.3",
   "description": "Take control of Odoo chatter — hide, resize & act in one click. Pins, debug mode & recents. Free & private.",
   "permissions": [
     "activeTab",

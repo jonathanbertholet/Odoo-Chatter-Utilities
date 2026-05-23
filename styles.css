@@ -188,7 +188,10 @@
 .vertical-layout .chatter-collapsed-rail,
 .chatter-native-below .chatter-toggle,
 .chatter-native-below .chatter-collapsed-rail,
-.chatter-native-below .chatter-resize-handle {
+.chatter-native-below .chatter-resize-handle,
+/* Odoo BOTTOM_CHATTER / COMBO: chatter lacks o-aside while stacked under the sheet */
+.o_form_view .o-mail-Form-chatter:not(.o-aside) .chatter-toggle,
+.o_form_view .o-mail-ChatterContainer:not(.o-aside) .chatter-toggle {
   display: none !important;
 }
 
@@ -397,7 +400,9 @@ body.chatter-resize-active {
 }
 
 .vertical-layout .chatter-resize-handle,
-.chatter-native-below .chatter-resize-handle {
+.chatter-native-below .chatter-resize-handle,
+.o_content > div:has(.o-mail-Form-chatter:not(.o-aside)) > .chatter-resize-handle,
+.o_content > div:has(.o-mail-ChatterContainer:not(.o-aside)) > .chatter-resize-handle {
   display: none !important;
 }
 

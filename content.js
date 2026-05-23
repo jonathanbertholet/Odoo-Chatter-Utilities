@@ -434,28 +434,31 @@
     },
 
     /**
-     * True when Odoo renders chatter below the form (e.g. accounting invoices with PDF aside).
+     * True when Odoo renders chatter below the form (narrow viewport, COMBO, invoice PDF, etc.).
+     * Mirrors Odoo mailLayout: o-aside is only used for SIDE_CHATTER / EXTERNAL_COMBO_XXL.
      * @param {HTMLElement} chatterContainer
      * @returns {boolean}
      */
     isNativeBelowChatterLayout: function(chatterContainer) {
-      if (!chatterContainer) return false;
+      if (!chatterContainer?.isConnected) return false;
+      if (!chatterContainer.closest('.o_form_view')) return false;
 
-      // Odoo COMBO layout: chatter cloned into the sheet background, not the aside column
+      // Side placement — extension rail/resize/toggle are appropriate here
+      if (chatterContainer.classList.contains('o-aside')) return false;
+
+      // Odoo COMBO / BOTTOM_CHATTER markers
       if (chatterContainer.classList.contains('o-isInFormSheetBg')) return true;
 
+      if (chatterContainer.matches('.o-mail-Form-chatter, .o-mail-ChatterContainer, .o_mail_chattercontainer')) {
+        return true;
+      }
+
       const layoutRoot = chatterContainer.closest('.o_content, .o_form_view');
-      const hasAttachmentPreview = !!layoutRoot?.querySelector('.o_attachment_preview:not(.hidden)');
+      if (layoutRoot?.querySelector('.o_attachment_preview:not(.hidden)')) return true;
 
-      // PDF preview occupies the aside — mail chatter sits below the form instead
-      if (hasAttachmentPreview && !chatterContainer.classList.contains('o-aside')) {
-        return true;
-      }
+      if (chatterContainer.closest('.o_form_sheet_bg')) return true;
 
-      // Chatter nested under the sheet without aside positioning
-      if (!chatterContainer.classList.contains('o-aside') && chatterContainer.closest('.o_form_sheet_bg')) {
-        return true;
-      }
+      if (chatterContainer.matches('.oe_chatter')) return true;
 
       return false;
     },
@@ -640,6 +643,65 @@
     },
 
     /**
+     * Syncs side vs below chrome without resetting fold state unless the layout mode changed.
+     * @param {HTMLElement} chatterContainer
+     * @param {HTMLElement} formContainer
+     * @param {HTMLElement|null} rail
+     * @param {HTMLButtonElement|null} toggleButton
+     */
+    syncLayoutModeIfChanged: function(chatterContainer, formContainer, rail, toggleButton) {
+      if (!chatterContainer || !formContainer) return;
+
+      getSettings(['displayBelow', 'stretchFormWhenFolded']).then((settings) => {
+        const useBelow = this.shouldUseBelowLayout(chatterContainer, settings.displayBelow);
+        const prevMode = rail?.__layoutMode;
+
+        if (useBelow) {
+          this.applyBelowLayoutMode(
+            formContainer,
+            chatterContainer,
+            rail,
+            toggleButton,
+            settings.stretchFormWhenFolded
+          );
+          if (rail) rail.__layoutMode = 'below';
+          return;
+        }
+
+        formContainer.classList.remove('vertical-layout', 'chatter-native-below');
+
+        const isInitialized = !!(rail && toggleButton?.isConnected && rail.__listenersBound);
+        const switchedFromBelow = prevMode === 'below';
+
+        // Full setup only when the rail is new or Odoo just moved chatter back to the aside
+        if (!isInitialized || switchedFromBelow) {
+          if (rail && toggleButton?.isConnected) {
+            this.setupChatterRail(rail, toggleButton, formContainer, chatterContainer);
+          } else {
+            this.removeToggleButton();
+            this.insertToggleButton(formContainer, chatterContainer);
+          }
+          return;
+        }
+
+        // Side-aside unchanged: refresh handle/width only — preserve fold state
+        if (rail) rail.__layoutMode = 'side';
+        toggleButton.style.removeProperty('display');
+
+        const isHidden = chatterContainer.classList.contains('hidden');
+        this.placeChatterRail(rail, formContainer, chatterContainer, isHidden);
+        this.initResizeHandle(formContainer, chatterContainer);
+
+        if (!isHidden) {
+          getSetting('chatterWidth').then((width) => {
+            const px = this.resolveStoredChatterWidth(width);
+            this.applyChatterWidthPx(px, formContainer, chatterContainer);
+          }).catch(console.error);
+        }
+      }).catch(console.error);
+    },
+
+    /**
      * Keeps the rail bound to the current chatter, re-creating it when Odoo swaps views.
      * @param {HTMLElement} chatterContainer
      */
@@ -654,7 +716,9 @@
         && rail.__formContainer === formContainer
         && toggleButton?.isConnected;
 
+      // Odoo may flip SIDE_CHATTER ↔ BOTTOM_CHATTER on the same nodes when the viewport changes
       if (isBoundToCurrentChatter) {
+        this.syncLayoutModeIfChanged(chatterContainer, formContainer, rail, toggleButton);
         return;
       }
 
@@ -944,6 +1008,10 @@
      */
     initResizeHandle: function(formContainer, chatterContainer) {
       if (!formContainer || !chatterContainer) return;
+      if (this.isBelowLayoutActive(formContainer, chatterContainer)) {
+        this.removeResizeHandle(formContainer);
+        return;
+      }
 
       let handle = this.getResizeHandle(formContainer);
       if (!handle) {
@@ -1114,6 +1182,9 @@
       const railBody = rail.__railBody || rail.querySelector('.chatter-rail-body');
       if (!toggleButton) return;
 
+      // Clear inline hide from native-below mode so the chevron can show again
+      toggleButton.style.removeProperty('display');
+
       rail.classList.toggle('is-collapsed', isHidden);
       toggleButton.classList.toggle('collapsed-mode', isHidden);
       toggleButton.classList.toggle('topbar-mode', !isHidden);
@@ -1207,9 +1278,11 @@
 
         if (this.shouldUseBelowLayout(chatterContainer, shouldDisplayBelow)) {
           this.applyBelowLayoutMode(formContainer, chatterContainer, rail, toggleButton, stretchFormWhenFolded);
+          if (rail) rail.__layoutMode = 'below';
           return;
         }
 
+        if (rail) rail.__layoutMode = 'side';
         formContainer.classList.remove('vertical-layout', 'chatter-native-below');
 
         this.setChatterCollapsedState(formContainer, chatterContainer, rail, !!defaultHidden);
@@ -1322,6 +1395,7 @@
         const chatterContainer = this.getChatterContainer();
         const formContainer = this.getFormContainer(chatterContainer);
         if (chatterContainer && formContainer) {
+          if (this.isBelowLayoutActive(formContainer, chatterContainer)) return;
           this.initResizeHandle(formContainer, chatterContainer);
           this.applyChatterWidthPx(px, formContainer, chatterContainer);
         }
@@ -1801,16 +1875,17 @@
   // Initialize chatter width on script load
   chatterManager.initWidth();
 
-  // Re-clamp stored width when the viewport changes
+  // Re-sync layout when Odoo switches side ↔ below chatter on viewport resize
   window.addEventListener('resize', debounce(() => {
-    getSetting('chatterWidth').then((width) => {
-      const chatterContainer = chatterManager.getChatterContainer();
-      const formContainer = chatterManager.getFormContainer(chatterContainer);
-      if (!chatterContainer || !formContainer) return;
+    const chatterContainer = chatterManager.getChatterContainer();
+    if (!chatterContainer) return;
 
-      const px = chatterManager.resolveStoredChatterWidth(width);
-      chatterManager.applyChatterWidthPx(px, formContainer, chatterContainer);
-    }).catch(console.error);
+    const formContainer = chatterManager.getFormContainer(chatterContainer);
+    const rail = chatterManager.getChatterRail();
+    const toggleButton = rail ? chatterManager.getRailToggle(rail) : null;
+
+    chatterManager.syncLayoutModeIfChanged(chatterContainer, formContainer, rail, toggleButton);
+    syncExtensionTheme();
   }, CONFIG.DEBOUNCE_INTERVAL));
 
   // Single Mutation Observer for DOM changes
