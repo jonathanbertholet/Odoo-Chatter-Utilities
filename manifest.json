@@ -1,14 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Odoo Chatter Utilities",
-  "version": "1.6",
-  "description": "Manage Odoo Chatter and other practical utilities",
+  "version": "2.0",
+  "description": "Take control of Odoo chatter — hide, resize & act in one click. Pins, debug mode & recents. Free & private.",
   "permissions": [
     "activeTab",
     "storage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": ["*://*.odoo.com/*"],
+  "optional_host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   },
@@ -21,7 +26,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["support.css", "popup.css"],
+      "resources": ["support.css", "popup.css", "styles.css"],
       "matches": ["<all_urls>"]
     }
   ],

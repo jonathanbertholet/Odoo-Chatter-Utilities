@@ -3,65 +3,164 @@
   display: none !important;
 }
 
-/* Update toggle button styling */
+/* Chatter toggle — lives in the Odoo chatter topbar when open */
 .chatter-toggle {
-  position: fixed;
-  width: 28px;
-  height: 28px;
-  background: rgba(135, 90, 123, 0.4);
-  border: none;
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(2px);
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
-.chatter-toggle:hover {
-  background: rgba(135, 90, 123, 0.95);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+/* Topbar mode: align with search / attach / followers icons */
+.chatter-toggle.topbar-mode {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 8px 0 4px; /* extra right inset so the chevron tip isn't clipped by the panel edge */
+  color: inherit;
+  overflow: visible;
 }
 
-/* Positioning for side mode */
-.chatter-toggle.side-mode {
+/* Topbar scrolls horizontally in Odoo — keep the last icon from being clipped */
+.o-mail-Chatter-topbar .chatter-toggle.topbar-mode {
+  flex-shrink: 0;
+  margin-inline-end: 2px;
+}
+
+.o-mail-Chatter-topbar:has(> .chatter-toggle.topbar-mode) {
+  padding-inline-end: 4px;
+}
+
+.chatter-toggle.topbar-mode:hover {
+  color: #875A7B;
+}
+
+/* Collapsed mode: small tab on the form edge when chatter is hidden */
+.o_content > div {
+  position: relative;
+}
+
+/* Collapsed rail: drag grip + chevron + vertical quick actions on the form edge */
+.chatter-collapsed-rail {
+  display: none;
+  position: absolute;
   right: 0;
-  top: 50%;
-  border-radius: 4px 0 0 4px;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  min-height: 100%;
+  z-index: 10;
+  border-radius: 6px 0 0 6px;
+  background: rgba(249, 250, 251, 0.96);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.08);
 }
 
-/* Redesigned toggle icon styling */
+.chatter-collapsed-rail.is-collapsed {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.chatter-rail-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px 8px;
+}
+
+/* Full-width folded forms: keep the rail in the flex row instead of overlaying the statusbar */
+.centered-form.stretch-form .chatter-collapsed-rail.is-collapsed {
+  position: sticky;
+  top: 0;
+  align-self: stretch;
+  flex-shrink: 0;
+  right: auto;
+  margin-left: 4px;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+  min-height: 100%;
+}
+
+.chatter-collapsed-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.chatter-collapsed-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.chatter-collapsed-action:hover {
+  background: rgba(135, 90, 123, 0.12);
+  color: #875A7B;
+}
+
+.chatter-collapsed-action svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.chatter-toggle.collapsed-mode {
+  position: static;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(135, 90, 123, 0.15);
+  color: #875A7B;
+}
+
+.chatter-toggle.collapsed-mode:hover {
+  background: rgba(135, 90, 123, 0.3);
+}
+
 .chatter-toggle-icon {
   width: 16px;
   height: 16px;
   fill: none;
-  stroke: white;
-  stroke-width: 2.5;
+  stroke: currentColor;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
   transition: transform 0.3s ease;
-  opacity: 0.9;
+  overflow: visible;
 }
 
-/* Arrow */
 .chatter-toggle svg {
   width: 16px;
   height: 16px;
 }
 
-.chatter-toggle:hover .chatter-toggle-icon {
-  opacity: 1;
+.chatter-toggle.topbar-mode svg {
+  width: 14px;
+  height: 14px;
 }
 
-/* Smooth rotation for toggle states */
-.chatter-toggle .chatter-toggle-icon {
-  transform: rotate(0);
-}
-
+/* Chevron points inward when chatter is open, outward when collapsed */
 .chatter-toggle.active .chatter-toggle-icon {
   transform: rotate(180deg);
+}
+
+/* Hide toggle UI when chatter is stacked below the form */
+.vertical-layout .chatter-toggle,
+.vertical-layout .chatter-collapsed-rail {
+  display: none !important;
 }
 
 /* Add new styles for centering the form */
@@ -69,10 +168,33 @@
   justify-content: center !important;
 }
 
-/* Adjust form sheet width when centered */
+/* Adjust form sheet width when centered (default folded behavior) */
 .centered-form .o_form_sheet_bg {
   max-width: 1140px;
   margin: 0 auto;
+}
+
+/* Optional: reclaim the aside space when chatter is folded */
+.o_content > div.centered-form.stretch-form {
+  justify-content: stretch !important;
+}
+
+.centered-form.stretch-form .o_form_sheet_bg {
+  max-width: none !important;
+  width: auto !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.centered-form.stretch-form .o_form_sheet {
+  max-width: none !important;
+}
+
+/* Odoo xxl forms cap sheet growth — allow full width once the aside is gone */
+.centered-form.stretch-form .o_form_view.o_xxl_form_view .o_form_sheet_bg {
+  flex: 1 1 auto !important;
+  max-width: none !important;
 }
 
 /* Add new styles for vertical layout */
@@ -98,6 +220,18 @@
   margin-bottom: 16px;
 }
 
+/* Full-width below-layout when stretch is enabled alongside display below */
+.vertical-layout.stretch-form .o_form_sheet_bg {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 0 16px !important;
+}
+
+.vertical-layout.stretch-form .o_form_view.o_xxl_form_view .o_form_sheet_bg {
+  flex: 1 1 auto !important;
+  max-width: none !important;
+}
+
 .vertical-layout .o-mail-ChatterContainer {
   position: relative !important;
   width: 100% !important;
@@ -106,6 +240,18 @@
   overflow: visible !important;
   margin: 0 auto !important;
   padding-top: 0 !important;
+}
+
+.vertical-layout.stretch-form .o-mail-ChatterContainer {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+
+.vertical-layout .o-mail-ChatterContainer.chatter-width-managed {
+  width: 100% !important;
+  flex: 1 1 auto !important;
 }
 
 /* Adjust hidden state for vertical layout */
@@ -122,37 +268,11 @@
   position: relative !important;
 }
 
-/* Add container styling */
-.chatter-toggle-container {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  position: sticky;
-  bottom: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 40%, rgba(255,255,255,1) 100%);
-  padding: 16px 0;
-  backdrop-filter: blur(8px);
-  z-index: 100;
-}
-
 /* Add these styles for the debug mode toggle */
 #debugMode:disabled + .slider {
   animation: pulse 1.5s infinite;
   opacity: 0.7;
   cursor: wait;
-}
-
-/* Animated toggle button */
-.chatter-toggle {
-  background: linear-gradient(135deg, #875A7B, #6d4862);
-  border-radius: 8px;
-  transform-origin: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chatter-toggle:hover {
-  transform: scale(1.05);
-  background: linear-gradient(135deg, #6d4862, #875A7B);
 }
 
 /* Loading state animation */
@@ -172,16 +292,82 @@
   flex: 0 1 auto !important;
 }
 
-/* Ensure the chatter container has adjustable minimum widths */
-.o-mail-ChatterContainer.standard {
-  min-width: 33.5vw !important; /* Standard Width: 33.5% of viewport */
+/* Drag handle between form sheet and aside chatter */
+.o-mail-ChatterContainer.chatter-width-managed {
+  position: relative;
+  flex: 0 0 var(--chatter-panel-width, 530px) !important;
+  width: var(--chatter-panel-width, 530px) !important;
+  min-width: 0 !important;
+  max-width: none !important;
 }
 
-.o-mail-ChatterContainer.medium {
-  min-width: 41.5vw !important; /* Medium Width: 41.5% of viewport */
+/* Drag handle between form sheet and aside chatter — on the split when open */
+.chatter-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: var(--chatter-panel-width, 530px);
+  width: 6px;
+  cursor: col-resize;
+  z-index: 16;
+  touch-action: none;
+  transform: translateX(50%);
 }
 
-.o-mail-ChatterContainer.large {
-  min-width: 50vw !important; /* Large Width: 50% of viewport */
+/* Integrated into the collapsed icon rail when folded */
+.chatter-resize-handle.in-rail {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  right: auto;
+  width: 6px;
+  flex-shrink: 0;
+  align-self: stretch;
+  transform: none;
+  border-radius: 6px 0 0 6px;
+  background: rgba(135, 90, 123, 0.08);
+}
+
+.chatter-resize-handle.in-rail::after {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  background: rgba(135, 90, 123, 0.3);
+}
+
+.chatter-resize-handle.in-rail:hover::after,
+.chatter-resize-handle.in-rail.is-dragging::after {
+  background: rgba(135, 90, 123, 0.65);
+}
+
+.chatter-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 48px;
+  border-radius: 3px;
+  background: rgba(135, 90, 123, 0.35);
+  transition: background 0.2s ease;
+}
+
+.chatter-resize-handle:hover::after,
+.chatter-resize-handle.is-dragging::after {
+  background: rgba(135, 90, 123, 0.8);
+}
+
+body.chatter-resize-active {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.vertical-layout .chatter-resize-handle {
+  display: none !important;
 }
 

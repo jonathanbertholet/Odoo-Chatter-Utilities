@@ -1,0 +1,72 @@
+=== SHORT DESCRIPTION (Chrome Web Store summary, max 132 characters) ===
+
+Take control of Odoo chatter — hide, resize & act in one click. Pins, debug mode & recents included. Free, private, open source.
+
+
+=== FULL DESCRIPTION (Chrome Web Store) ===
+
+Stop fighting Odoo’s chatter panel. Get the screen space you need, the layout you prefer, and the shortcuts that save you time — every single day.
+
+Odoo Chatter Utilities is built for consultants, developers, and power users who live in Odoo all day. One extension. Less clutter. More focus.
+
+✨ Why users love it
+
+🔘 Hide & show chatter in a second
+Collapse the panel when you need room to think. Bring it back instantly — from the chatter bar, a sleek side rail, or a keyboard shortcut (Alt+Shift+C / ⌘⇧X). Your call, your workflow.
+
+↔️ Your perfect split, every time
+Drag the divider between form and chatter until it feels right. Too narrow? It folds away on its own. Come back later — it remembers exactly how you like it.
+
+⚡ Act without reopening chatter
+Chatter hidden but need to log a note, send a message, ping WhatsApp, or schedule an activity? Do it straight from the folded icon rail. No extra clicks. No context switching.
+
+📐 Layout that fits how you work
+Keep chatter on the side for classic CRM-style forms, or stack it below when that’s clearer. Switch once in settings — stay productive.
+
+📏 Reclaim the full form when you need it
+Optional stretch mode gives your form the full width when chatter is out of the way — perfect for dense records, wide tables, and focused data entry.
+
+🛠️ Debug mode that actually stays on
+Turn on permanent debug once and forget about it. No more losing ?debug=1 every time Odoo navigates somewhere new. Built for implementers who debug for a living.
+
+🕓 Never lose your place
+Jump back to recently opened records in one click. Pin the pages you hit ten times a day. Spend less time hunting, more time doing.
+
+🌐 Works on your Odoo — not just odoo.com
+Self-hosted or custom domain? Grant access only to the instances you use. You stay in control.
+
+⚡ Settings in one click
+Jump straight to Odoo’s Settings app from the extension popup. Small thing. Big time-saver.
+
+🎨 Support pages, upgraded (Odoo employees)
+Cleaner support documentation with styling and navigation enhancements for internal teams.
+
+---
+
+🚀 What’s new in v2
+
+The biggest upgrade yet: chatter controls that feel native to Odoo — not bolted on.
+
+• Toggle built into the chatter bar, where it belongs
+• Drag-to-resize replaces clunky size presets — pixel-perfect control
+• Quick-action rail when folded — message, note, WhatsApp & activity at your fingertips
+• Smarter detection across Odoo views and SPA navigation
+• Permanent debug mode restored and improved
+
+---
+
+🔐 Private by design
+
+✅ Runs only on Odoo — plus domains you explicitly allow
+🚫 Zero data collection
+🌐 No phone-home, no analytics, no surprises
+🛡️ Minimal permissions. Maximum trust.
+
+---
+
+Free. Open source. Built by someone who uses Odoo daily.
+
+⭐ Love it? Leave a review — it helps other Odoo users find it.
+💬 Ideas or bugs? We’d love to hear from you on GitHub.
+
+https://github.com/jonathanbertholet/OdooChatter

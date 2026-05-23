@@ -1,4 +1,15 @@
 Release notes :
+
+V2.0
+- Chatter toggle moved into the Odoo chatter top bar
+- Drag handle to resize form/chatter split; auto-folds when too narrow
+- Quick-action icons when chatter is folded (message, note, WhatsApp, activity)
+- Stretch form to full width when folded or when chatter is displayed below
+- More reliable chatter detection across Odoo views and SPA navigation
+- Custom Odoo domains via optional host permissions
+- Chevron hidden when chatter is displayed below
+- Update changelog tab on extension update
+
 V1.4.1 
 - Form view list view width fixed. 
 

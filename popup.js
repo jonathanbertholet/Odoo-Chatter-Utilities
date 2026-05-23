@@ -7,8 +7,7 @@
   const DOM = {
     hideChatter: document.getElementById('hideChatter'),
     displayBelow: document.getElementById('displayBelow'),
-    // New: hide on-page toggle button option
-    hideToggleButton: document.getElementById('hideToggleButton'),
+    stretchFormWhenFolded: document.getElementById('stretchFormWhenFolded'),
     debugMode: document.getElementById('debugMode'),
     stylishSupportToggle: document.getElementById('stylishSupportToggle'),
     showDomainsToggle: document.getElementById('showDomainsToggle'),
@@ -20,6 +19,9 @@
     widthStandard: document.getElementById('widthStandard'),
     widthMedium: document.getElementById('widthMedium'),
     widthLarge: document.getElementById('widthLarge'),
+    whitelistList: document.getElementById('whitelistList'),
+    addCurrentDomain: document.getElementById('addCurrentDomain'),
+    revokeAllUrls: document.getElementById('revokeAllUrls'),
   };
 
   /**
@@ -34,9 +36,6 @@
     // Local storage methods
     getLocal: (keys) => new Promise((resolve) => chrome.storage.local.get(keys, resolve)),
     setLocal: (items) => new Promise((resolve) => chrome.storage.local.set(items, resolve)),
-
-    getChatterWidth: () => new Promise((resolve) => chrome.storage.sync.get(['chatterWidth'], resolve)),
-    setChatterWidth: (width) => new Promise((resolve) => chrome.storage.sync.set({ chatterWidth: width }, resolve)),
   };
 
   /**
@@ -171,6 +170,16 @@
           window.close(); // Optional: Close the popup after navigating
         }
       });
+    },
+
+    /**
+     * Returns the origin (protocol+host) of the active tab
+     * @returns {Promise<string>}
+     */
+    async getActiveOrigin() {
+      const { url } = await this.getCurrentTab();
+      const u = new URL(url);
+      return `${u.protocol}//${u.host}`;
     },
   };
 
@@ -308,6 +317,34 @@
    * Handles rendering and event binding for UI components
    */
   const UIManager = {
+    /**
+     * Returns whitelisted entries from granted permissions, grouped by normalized origin
+     * Each entry: { origin: string, patterns: string[] }
+     */
+    async getWhitelistEntries() {
+      return new Promise((resolve) => {
+        chrome.permissions.getAll((perms) => {
+          const origins = (perms && perms.origins) ? perms.origins : [];
+          // Debug: log raw granted origins from Chrome permissions
+          console.log('[Whitelist] Granted origins from Chrome:', origins);
+          const map = new Map();
+          origins.forEach((pattern) => {
+            if (!pattern || !pattern.startsWith('http') || pattern.includes('*.odoo.com')) return;
+            try {
+              const u = new URL(pattern.replace('/*', ''));
+              const origin = `${u.protocol}//${u.host}`;
+              const list = map.get(origin) || [];
+              list.push(pattern);
+              map.set(origin, list);
+            } catch (_) {}
+          });
+          const entries = Array.from(map.entries()).map(([origin, patterns]) => ({ origin, patterns }));
+          // Debug: log normalized whitelist entries we will render
+          console.log('[Whitelist] Normalized entries:', entries);
+          resolve(entries);
+        });
+      });
+    },
     /**
      * Renders the pinned pages in the popup with remove buttons and drag-and-drop enabled.
      */
@@ -489,8 +526,7 @@
         const syncResult = await StorageUtil.getSync([
           'hideChatter',
           'displayBelow',
-          // Load hideToggleButton initial state
-          'hideToggleButton',
+          'stretchFormWhenFolded',
           'debugMode',
           'stylishSupport',
         ]);
@@ -498,7 +534,7 @@
         const {
           hideChatter = false,
           displayBelow = false,
-          hideToggleButton = false,
+          stretchFormWhenFolded = false,
           debugMode = false,
           stylishSupport = false,
         } = syncResult;
@@ -507,7 +543,7 @@
         DOM.displayBelow.checked = displayBelow;
         DOM.hideChatter.disabled = displayBelow;
         // Initialize new toggle
-        if (DOM.hideToggleButton) DOM.hideToggleButton.checked = hideToggleButton;
+        if (DOM.stretchFormWhenFolded) DOM.stretchFormWhenFolded.checked = stretchFormWhenFolded;
         DOM.debugMode.checked = debugMode;
         DOM.stylishSupportToggle.checked = stylishSupport;
 
@@ -533,8 +569,8 @@
         // Render pinned pages
         await this.renderPins();
 
-        // Initialize chatter width settings
-        await this.initializeChatterWidth();
+        // Render whitelist
+        await this.renderWhitelist();
       } catch (error) {
         console.error('Error initializing popup:', error);
       }
@@ -554,10 +590,8 @@
           if (e.target.checked) {
             DOM.hideChatter.checked = false;
             await StorageUtil.setSync({ hideChatter: false, displayBelow: true });
-            TabUtil.reloadActiveTab();
           } else {
             await StorageUtil.setSync({ displayBelow: false });
-            TabUtil.reloadActiveTab();
           }
         } catch (error) {
           console.error('Error handling displayBelow change:', error);
@@ -585,10 +619,9 @@
         handleToggleChange(DOM.hideChatter, 'hideChatter');
       });
 
-      // New: persist hideToggleButton change
-      if (DOM.hideToggleButton) {
-        DOM.hideToggleButton.addEventListener('change', () => {
-          handleToggleChange(DOM.hideToggleButton, 'hideToggleButton');
+      if (DOM.stretchFormWhenFolded) {
+        DOM.stretchFormWhenFolded.addEventListener('change', () => {
+          handleToggleChange(DOM.stretchFormWhenFolded, 'stretchFormWhenFolded');
         });
       }
 
@@ -629,65 +662,137 @@
         }
       });
 
-      // Setup chatter width listeners
-      this.setupChatterWidthListeners();
-    },
+      // Whitelist events
+      if (DOM.addCurrentDomain) {
+        DOM.addCurrentDomain.addEventListener('click', async () => {
+          try {
+            const origin = await TabUtil.getActiveOrigin();
+            const pattern = `${origin}/*`;
 
-    /**
-     * Renders the initial state of chatter width settings
-     */
-    async initializeChatterWidth() {
-      try {
-        const result = await StorageUtil.getChatterWidth();
-        const width = result.chatterWidth || 'standard';
-        
-        // Find the tri-state toggle container
-        const toggleContainer = document.querySelector('.tri-state-toggle');
-        if (!toggleContainer) return;
-        
-        // Set the active state
-        toggleContainer.dataset.state = width;
-        
-        // Update active class on options
-        const options = toggleContainer.querySelectorAll('.toggle-option');
-        options.forEach(option => {
-          option.classList.toggle('active', option.dataset.value === width);
+            // Ask for host permission at runtime
+            chrome.permissions.request({ origins: [pattern] }, async (granted) => {
+              if (granted) {
+                // Immediately rebuild from permissions
+                await UIManager.renderWhitelist();
+              } else {
+                alert('Permission not granted for this site.');
+              }
+            });
+          } catch (e) {
+            console.error('Failed to add current domain:', e);
+          }
         });
-      } catch (error) {
-        console.error('Error initializing chatter width:', error);
+      }
+
+      // Revoke <all_urls> if present
+      if (DOM.revokeAllUrls) {
+        DOM.revokeAllUrls.addEventListener('click', async (ev) => {
+          ev.preventDefault();
+          try {
+            const removed = await new Promise((resolve) => {
+              chrome.permissions.remove({ origins: ['<all_urls>'] }, (ok) => {
+                const err = chrome.runtime.lastError ? chrome.runtime.lastError.message : null;
+                console.log('[Whitelist] Revoke <all_urls> result:', { ok, err });
+                resolve(!!ok);
+              });
+            });
+            await UIManager.renderWhitelist();
+            if (!removed) alert('Could not revoke <all_urls>.');
+          } catch (e) {
+            console.error('Failed to revoke <all_urls>:', e);
+          }
+        });
       }
     },
 
     /**
-     * Sets up event listeners for chatter width toggle
+     * Renders the whitelist list with remove buttons
      */
-    setupChatterWidthListeners() {
-      const toggleContainer = document.querySelector('.tri-state-toggle');
-      if (!toggleContainer) return;
+    async renderWhitelist() {
+      try {
+        if (!DOM.whitelistList) return;
+        const entries = await this.getWhitelistEntries();
+        // Debug: log entries at render time
+        console.log('[Whitelist] Rendering entries:', entries);
+        DOM.whitelistList.innerHTML = '';
 
-      const handleWidthChange = async (selectedWidth) => {
-        try {
-          await StorageUtil.setChatterWidth(selectedWidth);
-          // Update the toggle state
-          toggleContainer.dataset.state = selectedWidth;
-          
-          // Update active classes
-          const options = toggleContainer.querySelectorAll('.toggle-option');
-          options.forEach(option => {
-            option.classList.toggle('active', option.dataset.value === selectedWidth);
-          });
-        } catch (error) {
-          console.error('Error setting chatter width:', error);
+        if (entries.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'setting-description';
+          empty.textContent = 'No custom domains added yet.';
+          DOM.whitelistList.appendChild(empty);
+          return;
         }
-      };
 
-      // Add click listeners to each option
-      const options = toggleContainer.querySelectorAll('.toggle-option');
-      options.forEach(option => {
-        option.addEventListener('click', () => {
-          handleWidthChange(option.dataset.value);
+        // Detect <all_urls> and disable per-origin removal if present
+        let hasAllUrls = false;
+        chrome.permissions.getAll((perms) => {
+          hasAllUrls = (perms?.origins || []).includes('<all_urls>');
         });
-      });
+
+        entries.forEach((entry) => {
+          const item = document.createElement('div');
+          item.className = 'whitelist-item';
+
+          const label = document.createElement('div');
+          label.className = 'whitelist-domain';
+          label.textContent = entry.origin;
+
+          const remove = document.createElement('button');
+          remove.className = 'remove-domain';
+          remove.textContent = 'Remove';
+          remove.type = 'button';
+          remove.disabled = hasAllUrls;
+          remove.addEventListener('click', async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            try {
+              // First attempt batch removal for exact granted patterns
+              const removedBatchResult = await new Promise((resolve) => {
+                chrome.permissions.remove({ origins: entry.patterns }, (ok) => {
+                  const err = chrome.runtime.lastError ? chrome.runtime.lastError.message : null;
+                  console.log('[Whitelist] Batch remove result:', { patterns: entry.patterns, ok, err });
+                  resolve({ ok: !!ok, err });
+                });
+              });
+              if (!removedBatchResult.ok) {
+                // Fallback: remove one-by-one; succeed if any removed
+                let anyRemoved = false;
+                for (const p of entry.patterns) {
+                  // eslint-disable-next-line no-await-in-loop
+                  const singleResult = await new Promise((resolve) => {
+                    chrome.permissions.remove({ origins: [p] }, (rem) => {
+                      const err = chrome.runtime.lastError ? chrome.runtime.lastError.message : null;
+                      console.log('[Whitelist] Single remove attempt:', { pattern: p, ok: rem, err });
+                      resolve({ ok: !!rem, err });
+                    });
+                  });
+                  anyRemoved = anyRemoved || singleResult.ok;
+                }
+                if (!anyRemoved) {
+                  alert('Could not remove permission for this site.');
+                }
+              }
+              // Hint: if <all_urls> is present, removing a specific origin is a no-op
+              chrome.permissions.getAll((afterPerms) => {
+                console.log('[Whitelist] Origins after removal attempts:', afterPerms?.origins);
+                if (afterPerms?.origins?.includes('<all_urls>')) {
+                  console.warn('[Whitelist] <all_urls> permission is present; origin-specific removal may be ignored by Chrome.');
+                }
+              });
+              await UIManager.renderWhitelist();
+            } catch (e) {
+              console.error('Failed to remove domain:', e);
+            }
+          });
+
+          item.appendChild(label);
+          item.appendChild(remove);
+          DOM.whitelistList.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Error rendering whitelist:', error);
+      }
     },
   };
 

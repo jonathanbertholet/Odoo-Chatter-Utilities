@@ -99,14 +99,13 @@
           </label>
         </div>
 
-        <!-- New: option to hide the on-page toggle button and rely on keyboard shortcut only -->
         <div class="setting-row">
           <div class="setting-info">
-            <span class="setting-title">Hide toggle button</span>
-            <div class="setting-description">Hide the chatter toggle button on the page; use the keyboard shortcut only</div>
+            <span class="setting-title">Stretch form when folded</span>
+            <div class="setting-description">Use the full form width when the side chatter is hidden, or when chatter is displayed below</div>
           </div>
           <label class="switch">
-            <input type="checkbox" id="hideToggleButton">
+            <input type="checkbox" id="stretchFormWhenFolded">
             <span class="slider"></span>
           </label>
         </div>
@@ -146,19 +145,32 @@
           </label>
         </div>
 
+        <!-- Whitelisted Domains (Dynamic Permissions) -->
         <div class="setting-row">
           <div class="setting-info">
-            <span class="setting-title">Chatter Width</span>
-            <div class="setting-description">Minimum chatter width.</div>
-          </div>
-          <div class="tri-state-toggle">
-            <div class="toggle-option" data-value="standard">Normal</div>
-            <div class="toggle-option" data-value="medium">Wide</div>
-            <div class="toggle-option" data-value="large">Large</div>
+            <span class="setting-title">Whitelisted domains</span>
+            <div class="setting-description">Allow extension on custom Odoo domains</div>
           </div>
         </div>
+        <div id="whitelistControls" class="whitelist-controls">
+          <button id="addCurrentDomain" class="action-button">
+            <svg viewBox="0 0 24 24" class="button-icon">
+              <path d="M12 5v14m-7-7h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Add Current Site
+          </button>
+          <button id="revokeAllUrls" class="action-button" title="Remove <all_urls> permission if present">
+            <svg viewBox="0 0 24 24" class="button-icon">
+              <path d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Revoke <all_urls>
+          </button>
+        </div>
+        <div id="whitelistList" class="whitelist-list">
+          <!-- Populated by JavaScript -->
+        </div>
 
-        <!-- GitHub section -->
+        <!-- GitHub section (kept at bottom of settings) -->
         <div class="github-section">
           <div class="github-header">
             <h3>Open Source</h3>

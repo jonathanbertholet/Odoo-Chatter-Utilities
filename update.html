@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Odoo Chatter Utilities — What's New</title>
+  <link rel="icon" type="image/png" href="icons/icon16.png">
+  <link rel="stylesheet" href="update.css">
+</head>
+<body>
+  <main class="update-page">
+    <header class="update-header">
+      <img src="icons/icon48.png" alt="" class="update-logo" width="48" height="48">
+      <div>
+        <h1>What's new</h1>
+        <p class="update-version" id="version"></p>
+      </div>
+    </header>
+
+    <figure class="update-hero">
+      <img src="update.png" alt="Odoo Chatter Utilities version 2 — folded chatter with quick actions and full-width form">
+    </figure>
+
+    <section class="update-changelog">
+      <h2>Version 2</h2>
+      <ul>
+        <li>
+          <strong>Toggler in the chatter bar</strong>
+          <span>The chevron now lives in the Odoo chatter top bar when open, and in a full-height vertical rail when folded.</span>
+        </li>
+        <li>
+          <strong>Quick actions when folded</strong>
+          <span>When chatter is hidden, use the vertical icon rail to send a message, log a note, open WhatsApp, or schedule an activity — without reopening the panel first.</span>
+        </li>
+        <li>
+          <strong>Drag to resize</strong>
+          <span>Drag the handle between the form and chatter to set your preferred split. Drag it narrow enough and the chatter folds automatically. Your width is remembered in pixels.</span>
+        </li>
+        <li>
+          <strong>Resize handle in the folded rail</strong>
+          <span>When chatter is collapsed, the drag grip is built into the icon bar on the left — drag left to reopen at your preferred width.</span>
+        </li>
+        <li>
+          <strong>Stretch form when folded</strong>
+          <span>New setting to expand the form to full width when the side chatter is hidden, or when chatter is displayed below.</span>
+        </li>
+        <li>
+          <strong>Better chatter detection</strong>
+          <span>Finds the right chatter panel more reliably across Odoo views and SPA navigation.</span>
+        </li>
+        <li>
+          <strong>Permanent debug mode fixed</strong>
+          <span>Debug mode now persists across page loads and Odoo SPA navigation again — <code>?debug=1</code> is re-applied when Odoo drops it.</span>
+        </li>
+        <li>
+          <strong>Smarter layout</strong>
+          <span>The toggle is hidden when “Display chatter below” is on. The folded quick-action rail no longer overlaps the status bar when stretch mode is enabled.</span>
+        </li>
+        <li>
+          <strong>Custom Odoo domains</strong>
+          <span>Use the extension on self-hosted or custom Odoo URLs via optional host permissions — add only the sites you need in Settings.</span>
+        </li>
+        <li>
+          <strong>Removed preset chatter widths</strong>
+          <span>Normal / Wide / Large size presets are gone — use drag-to-resize instead for a pixel-perfect split.</span>
+        </li>
+        <li>
+          <strong>Removed “Hide toggle button”</strong>
+          <span>That setting is deprecated. The chevron and folded rail are always available; use the keyboard shortcut (<kbd>Alt+Shift+C</kbd> / <kbd>⌘⇧X</kbd>) for quick toggling too.</span>
+        </li>
+        <li>
+          <strong>Polish</strong>
+          <span>Topbar chevron no longer clips at the panel edge. Display below and stretch form can be used together without a tab reload.</span>
+        </li>
+      </ul>
+    </section>
+
+    <footer class="update-footer">
+      <button id="closeBtn" type="button" class="update-button">Got it</button>
+    </footer>
+  </main>
+  <script src="update.js"></script>
+</body>
+</html>
