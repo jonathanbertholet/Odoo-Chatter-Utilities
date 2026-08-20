@@ -1,5 +1,11 @@
 Release notes :
 
+V2.0.4
+- Fix "Hide chatter by default" being lost on SPA record navigation (list → form, pager, in-app links)
+- Fix deferred chatter topbar setup skipping rail init when the rail was still detached
+- Re-apply hide-by-default from the setting when the record identity (pathname + hash) changes; same-record mutations still preserve fold state
+- Listen for hashchange so Odoo ≤16 hash routing triggers re-init
+
 V2.0.3
 - Fix chevron missing in folded mode after native below-chatter detection
 - Fix drag-to-unfold snapping closed immediately (layout refresh no longer resets fold state)

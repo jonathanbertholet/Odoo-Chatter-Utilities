@@ -118,6 +118,15 @@
   }
 
   /**
+   * Record identity for SPA navigation (pathname + hash only).
+   * Excludes location.search so debug-param churn from updateDebugMode is not treated as navigation.
+   * @returns {string}
+   */
+  function getRecordKey() {
+    return window.location.pathname + window.location.hash;
+  }
+
+  /**
    * Parses an rgb/rgba color string into channel values.
    * @param {string} color
    * @returns {{ r: number, g: number, b: number }|null}
@@ -687,6 +696,17 @@
         // Side-aside unchanged: refresh handle/width only — preserve fold state
         if (rail) rail.__layoutMode = 'side';
         toggleButton.style.removeProperty('display');
+
+        // New record via SPA navigation — restore hide-by-default instead of prior DOM state
+        const recordKey = getRecordKey();
+        if (rail && rail.__recordKey !== recordKey) {
+          rail.__recordKey = recordKey;
+          getSetting('hideChatter').then((hideChatter) => {
+            this.setChatterCollapsedState(formContainer, chatterContainer, rail, !!hideChatter);
+            this.initResizeHandle(formContainer, chatterContainer);
+          }).catch(console.error);
+          return;
+        }
 
         const isHidden = chatterContainer.classList.contains('hidden');
         this.placeChatterRail(rail, formContainer, chatterContainer, isHidden);
@@ -1286,6 +1306,8 @@
         formContainer.classList.remove('vertical-layout', 'chatter-native-below');
 
         this.setChatterCollapsedState(formContainer, chatterContainer, rail, !!defaultHidden);
+        // Stamp so later layout syncs on the same record preserve fold; SPA record changes re-apply
+        rail.__recordKey = getRecordKey();
 
         this.initResizeHandle(formContainer, chatterContainer);
         getSetting('chatterWidth').then((width) => {
@@ -1341,7 +1363,9 @@
       }
 
       waitForElement('.o-mail-Chatter-topbar', chatterContainer, 5000).then((topbarEl) => {
-        if (!topbarEl || this.getChatterRail() !== rail) return;
+        // Rail is still detached here — only bail if a *different* rail was registered meanwhile
+        const currentRail = this.getChatterRail();
+        if (!topbarEl || !chatterContainer.isConnected || (currentRail && currentRail !== rail)) return;
         topbarEl.appendChild(toggleButton);
         formContainer.appendChild(rail);
         initialize();
@@ -2081,5 +2105,7 @@
 
     // Listen for back/forward
     window.addEventListener('popstate', reinit);
+    // Odoo ≤16 hash routing does not fire pushState/popstate for every record change
+    window.addEventListener('hashchange', reinit);
   }
 })();
