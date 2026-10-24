@@ -9,6 +9,8 @@ Stop fighting Odoo’s chatter panel. Get the screen space you need, the layout 
 
 Odoo Chatter Utilities is built for consultants, developers, and power users who live in Odoo all day. One extension. Less clutter. More focus.
 
+Designed for Odoo 17, 18 and 19. Native invoice/PDF and bottom chatter layouts keep their own placement and sizing.
+
 ✨ Why users love it
 
 🔘 Hide & show chatter in a second
@@ -43,22 +45,23 @@ Cleaner support documentation with styling and navigation enhancements for inter
 
 ---
 
-🚀 What’s new in v2
+🚀 What’s new in v2.1
 
-The biggest upgrade yet: chatter controls that feel native to Odoo — not bolted on.
+Rebuilt controls that follow Odoo’s form and app lifecycle.
 
-• Toggle built into the chatter bar, where it belongs
-• Drag-to-resize replaces clunky size presets — pixel-perfect control
-• Quick-action rail when folded — message, note, WhatsApp & activity at your fingertips
-• Smarter detection across Odoo views and SPA navigation
-• Permanent debug mode restored and improved
+• Stable controls across app switches, record changes and dialogs
+• Native PDF preview and Audit/Documents widths preserved
+• Analytic-distribution dropdowns stay open during chatter updates
+• Quick actions follow Odoo’s permissions and native handlers
+• Debug reads the running Odoo session and preserves assets/tests modes
+• Concurrent tabs retain pins and recent records; site revocation also stops open-tab controls
 
 ---
 
 🔐 Private by design
 
 ✅ Runs only on Odoo — plus domains you explicitly allow
-🚫 Zero data collection
+🚫 No remote data collection; pins and record history stay in local extension storage
 🌐 No phone-home, no analytics, no surprises
 🛡️ Minimal permissions. Maximum trust.
 
@@ -69,4 +72,4 @@ Free. Open source. Built by someone who uses Odoo daily.
 ⭐ Love it? Leave a review — it helps other Odoo users find it.
 💬 Ideas or bugs? We’d love to hear from you on GitHub.
 
-https://github.com/jonathanbertholet/OdooChatter
+https://github.com/jonathanbertholet/Odoo-Chatter-Utilities

@@ -1,5 +1,19 @@
 Release notes :
 
+V2.1.0 — Unreleased
+- Rebuild chatter control around per-panel lifecycle ownership for Odoo 17–19; Odoo 16 is out of scope
+- Follow app/form open and close, dialogs, delayed topbars, native layout changes and replacement nodes without duplicate controls or reset loops (#1, #9)
+- Preserve native invoice/PDF/bottom layouts and specialized Audit/Documents widths; leave Studio controls inactive (#3, #6)
+- Stop synthetic resize events from closing analytic-distribution dropdowns (#7)
+- Refresh folded quick actions when native access rights or available actions change, using Odoo's own handlers
+- Keep drag width synchronous, respect RTL, and restore state after canceled/interrupted drags
+- Read Odoo's actual debug bootstrap; preserve assets/tests modes, clear server debug with debug=0 on explicit off, and guard reload conflicts (#4)
+- Clear inherited debug on excluded public Help and My Databases routes, including localized URLs (#2, #8)
+- Reconcile custom grants and stop already injected scripts on revocation (#5)
+- Serialize recents/pins updates so tabs and popups cannot overwrite one another; retain search and report storage failures
+- Preserve native support forms, menus and listeners; remove support enhancements cleanly when disabled
+- Add 89 passing DOM/Chrome-API regression cases; signed-in Odoo and real browser layout have not been exercised
+
 V2.0.3
 - Fix chevron missing in folded mode after native below-chatter detection
 - Fix drag-to-unfold snapping closed immediately (layout refresh no longer resets fold state)

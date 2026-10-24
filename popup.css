@@ -158,6 +158,11 @@ input:checked + .slider:before {
   background-color: #ccc;
 }
 
+.switch input:focus-visible + .slider {
+  outline: 2px solid #875A7B;
+  outline-offset: 2px;
+}
+
 /* Shortcuts Styles */
 .shortcuts {
   margin-bottom: 16px;
@@ -573,4 +578,9 @@ input:checked + .slider:before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-} 
+}
+#popupStatus { padding: 8px; border-radius: 4px; background: #edf6ed; color: #24502b; font-size: 12px; }
+#popupStatus.is-error { background: #fff0ef; color: #9e2424; }
+.recent-view-empty { padding: 8px; font-size: 12px; color: #666; }
+.recent-view-header { display: flex; justify-content: space-between; gap: 8px; }
+.recent-view-domain { font-size: 11px; color: #666; }

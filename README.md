@@ -1,98 +1,55 @@
-# Odoo Chatter Manager
+# Odoo Chatter Utilities
 
-A powerful Chrome extension that enhances your Odoo experience with smart chatter management, keyboard shortcuts, and productivity features.
+A Chrome extension for folding and resizing Odoo chatter, opening native chatter actions, keeping debug enabled, and saving pins and recent records.
 
-## ✨ Key Features
+Version 2.1 targets **Odoo 17, 18 and 19**, with Chrome 106 or later. Odoo 16 compatibility is outside this release’s scope.
 
-### 🗨️ Smart Chatter Controls
-- Toggle chatter visibility with keyboard shortcuts (⌘⇧X on Mac, Alt+Shift+C on Windows/Linux)
-- Choose between side-by-side or vertical layout
-- Customize default chatter visibility and width
-- Persistent preferences across sessions
+## Chatter
 
-### 🛠️ Developer Tools
-- Maintain debug mode across page navigation
-- Quick toggle without URL modification
-- Compatible with existing Odoo debug features
+- Fold side chatter with its chevron or the configured Chrome shortcut: **⌘⇧X** on macOS, **Alt+Shift+C** on Windows/Linux.
+- Drag the divider to resize. Drag below the minimum width to fold; drag from the folded rail to reopen. Canceling a drag restores the previous width.
+- Use the folded rail to send a message, log a note, open WhatsApp, or schedule an activity. Actions appear only when Odoo makes them available and invoke Odoo’s own handlers.
+- Choose **Hide chatter by default**, **Display chatter below**, or **Stretch form when folded** in the popup.
 
-### 📝 Recent Views
-- Track and access recently visited Odoo pages
-- Quick navigation to frequently used forms
-- Customizable domain display
+Controls follow app switches, record navigation, dialogs, delayed rendering, and replacement chatter nodes. Studio suppresses the controls. Native bottom chatter and invoice/PDF layouts keep their native placement and sizing. Audit and Documents keep their own panel widths; resizing and forced stacking apply to standard form splits.
 
-### ⚡ Quick Access
-- One-click access to Odoo settings
-- Keyboard shortcuts for common actions
-- Streamlined navigation
+Hide-by-default applies to side chatter when opening a different record. Opening chatter manually survives rerenders on that record. Choosing Display chatter below retains the saved side visibility preference.
 
-### 🔖 Pins
-- Pin your favorite pages to quick access
-- Persistent across sessions
+## Debug, pins and recent records
 
-### 🎨 Customize Chatter Width
-- Choose between standard, medium, or large width
-- Persistent across sessions
+Permanent debug reads Odoo’s running debug state. It preserves assets/tests modes across SPA navigation and avoids reloading an already enabled session. Switching the preference off explicitly clears Odoo’s server debug session with `debug=0`; leaving the default off preserves debug enabled elsewhere.
 
-## 🚀 Installation
+Automatic debug is excluded from public Odoo Help, My Databases, slides, Website and Knowledge routes. Repeated conflicting reloads pause until the preference is toggled again.
 
-1. Download from Chrome Web Store : https://chromewebstore.google.com/detail/odoo-chatter-utilities/jnlkgngeodbbhjhfifdkameknejjgkdl
-   
-   OR
+Pin any HTTP(S) page from the popup and drag pins to reorder. Recent records are searchable and capped at 50. Both lists update through the service worker so concurrent tabs do not overwrite one another. Record history and pins stay in Chrome’s local extension storage; preferences use Chrome sync storage. There are no analytics or remote tracking requests.
 
-2. Manual Installation:
-   ```bash
-   # Clone the repository
-   git clone https://github.com/jonathanbertholet/OdooChatter
-   
-   # Load in Chrome:
-   1. Open chrome://extensions/
-   2. Enable "Developer mode"
-   3. Click "Load unpacked"
-   4. Select the extension directory
-   ```
+The optional employee support-page styling adds a table of contents while retaining native menus, forms and event handlers. Turning it off removes the enhancement.
 
-## 💻 Usage
+## Installation and custom domains
 
-### Chatter Management
-- Use keyboard shortcuts to toggle chatter visibility
-- Access settings via the extension popup
-- Choose your preferred layout (side-by-side/vertical)
+Install the published version from the [Chrome Web Store](https://chromewebstore.google.com/detail/odoo-chatter-utilities/jnlkgngeodbbhjhfifdkameknejjgkdl), or load this checkout for the unreleased changes:
 
-### Recent Views
-- Click the extension icon to see recently visited pages
-- Quick navigation to frequently used forms
-- Toggle domain display in settings
+1. Open `chrome://extensions/` and enable Developer mode.
+2. Choose **Load unpacked** and select this repository folder. If already loaded, use its **Reload** button.
+3. Refresh the Odoo page.
 
-### Debug Mode
-- Enable persistent debug mode in settings
-- Automatically maintains debug state across navigation
-- Compatible with existing Odoo debug features
+Odoo domains are included by default. For a custom domain, open its Odoo page, expand the popup’s Settings, choose **Add Current Site**, grant access, and refresh the page. Removing a custom grant stops the extension in already open tabs unless another grant still covers them.
 
-## ⌨️ Keyboard Shortcuts
+## Development and checks
 
-| Action | Mac | Windows/Linux |
-|--------|-----|---------------|
-| Toggle Chatter | ⌘⇧X | Alt+Shift+C |
+The extension has no build step or runtime npm dependencies. `shared.js` provides URL contracts to the content script, popup and service worker. Each mounted chatter has its own controller; all listeners, observers and drag handlers have explicit cleanup.
 
-## 🤝 Contributing
+The regression suite executes the shipped JavaScript in jsdom with asynchronous Chrome API doubles. Install the test dependency outside the extension:
 
-Contributions are welcome! Feel free to:
-- Submit issues
-- Propose new features
-- Create pull requests
+```sh
+npm install --prefix /tmp/chatter-regression --no-audit --no-fund --ignore-scripts jsdom@30.1.3
+NODE_PATH=/tmp/chatter-regression/node_modules node --test scripts/*.test.cjs
+```
 
-## 📄 License
+Use Node.js 24 or later. **89 tests pass** for lifecycle transitions, native layouts, dialog selection, access-right changes, drag cancellation, debug/session handling, storage races, popup failures and permission revocation. JavaScript syntax and packaged asset references are also checked. These checks do not run a browser or a signed-in Odoo server, and do not establish pixel-level layout compatibility with every customization.
 
-This project is open source and available under the [MIT License](LICENSE).
+See the [reliability review](docs/reliability-review.md) for findings, the nine reported issues, Odoo source references and validation limits. GitHub reports remain unchanged. Version 2.1 has not yet been released to the Chrome Web Store.
 
-## 🔗 Links
-
-- [GitHub Repository](https://github.com/jonathanbertholet/OdooChatter)
-- [Report Issues](https://github.com/jonathanbertholet/OdooChatter/issues)
-- [Chrome web store](https://chromewebstore.google.com/detail/odoo-chatter-utilities/jnlkgngeodbbhjhfifdkameknejjgkdl)
-
-## 💡 Support
-
-For support, please:
-1. Check the [GitHub Issues](https://github.com/jonathanbertholet/OdooChatter/issues) for existing problems
-2. Create a new issue if your problem isn't already reported
+- [Repository](https://github.com/jonathanbertholet/Odoo-Chatter-Utilities)
+- [Bug reports](https://github.com/jonathanbertholet/Odoo-Chatter-Utilities/issues)
+- [Release notes](releasenotes.md)

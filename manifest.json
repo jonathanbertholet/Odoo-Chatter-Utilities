@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Odoo Chatter Utilities",
-  "version": "2.0.3",
+  "version": "2.1.0",
+  "minimum_chrome_version": "106",
   "description": "Take control of Odoo chatter — hide, resize & act in one click. Pins, debug mode & recents. Free & private.",
   "permissions": [
     "activeTab",
@@ -21,7 +22,7 @@
     {
       "matches": ["*://*.odoo.com/*"],
       "css": ["styles.css"],
-      "js": ["content.js"]
+      "js": ["shared.js", "content.js"]
     }
   ],
   "web_accessible_resources": [

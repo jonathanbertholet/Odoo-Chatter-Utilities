@@ -180,7 +180,7 @@ pre {
 }
 
 /* Scrolled effect on navbar */
-#support-nav.scrolled {
+#support-nav.chatter-ext-scrolled {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
@@ -362,7 +362,7 @@ input, textarea, select {
 /* TOC Container */
 .toc-container {
     position: fixed !important;
-    right: 24px !important;
+    inset-inline-end: 24px !important;
     top: 100px !important;
     width: 240px !important;
     max-height: calc(100vh - 120px) !important;
@@ -424,19 +424,20 @@ input, textarea, select {
     box-shadow: 0 2px 4px rgba(135, 90, 123, 0.2) !important;
 }
 
-/* Make room in main content for TOC */
-.o_content > div.vertical-layout {
-    padding-right: 280px !important; /* Enough space for the fixed TOC */
+/* Reserve room whenever our TOC exists, independently of chatter placement. */
+body:has(> .chatter-toc) {
+    box-sizing: border-box;
+    padding-inline-end: 280px !important;
 }
 
 /* Responsive adjustments for TOC */
 @media (max-width: 1200px) {
     .toc-container {
-        right: 16px !important;
+        inset-inline-end: 16px !important;
         width: 200px !important;
     }
-    .o_content > div.vertical-layout {
-        padding-right: 232px !important;
+    body:has(> .chatter-toc) {
+        padding-inline-end: 232px !important;
     }
 }
 
@@ -444,8 +445,8 @@ input, textarea, select {
     .toc-container {
         display: none !important;
     }
-    .o_content > div.vertical-layout {
-        padding-right: 16px !important;
+    body:has(> .chatter-toc) {
+        padding-inline-end: 0 !important;
     }
 }
 
@@ -470,5 +471,3 @@ input, textarea, select {
 .o_content::-webkit-scrollbar-thumb:hover {
     background: #6d4862;
 }
-  
-  
