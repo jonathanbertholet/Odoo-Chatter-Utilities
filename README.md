@@ -27,10 +27,10 @@ The optional employee support-page styling adds a table of contents while retain
 
 ## Installation and custom domains
 
-Install the published version from the [Chrome Web Store](https://chromewebstore.google.com/detail/odoo-chatter-utilities/jnlkgngeodbbhjhfifdkameknejjgkdl), or load this checkout for the unreleased changes:
+Install the current store version from the [Chrome Web Store](https://chromewebstore.google.com/detail/odoo-chatter-utilities/jnlkgngeodbbhjhfifdkameknejjgkdl), or download the extension ZIP from the [latest GitHub release](https://github.com/jonathanbertholet/Odoo-Chatter-Utilities/releases/latest). For manual installation, extract the ZIP first, or use this checkout:
 
 1. Open `chrome://extensions/` and enable Developer mode.
-2. Choose **Load unpacked** and select this repository folder. If already loaded, use its **Reload** button.
+2. Choose **Load unpacked** and select the extracted extension folder or this repository folder. If already loaded, use its **Reload** button.
 3. Refresh the Odoo page.
 
 Odoo domains are included by default. For a custom domain, open its Odoo page, expand the popup’s Settings, choose **Add Current Site**, grant access, and refresh the page. Removing a custom grant stops the extension in already open tabs unless another grant still covers them.

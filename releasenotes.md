@@ -1,6 +1,6 @@
 Release notes :
 
-V2.1.0 — Unreleased
+V2.1.0 — Reliability rewrite for Odoo 17–19
 - Rebuild chatter control around per-panel lifecycle ownership for Odoo 17–19; Odoo 16 is out of scope
 - Follow app/form open and close, dialogs, delayed topbars, native layout changes and replacement nodes without duplicate controls or reset loops (#1, #9)
 - Preserve native invoice/PDF/bottom layouts and specialized Audit/Documents widths; leave Studio controls inactive (#3, #6)
@@ -12,7 +12,20 @@ V2.1.0 — Unreleased
 - Reconcile custom grants and stop already injected scripts on revocation (#5)
 - Serialize recents/pins updates so tabs and popups cannot overwrite one another; retain search and report storage failures
 - Preserve native support forms, menus and listeners; remove support enhancements cleanly when disabled
+- Keep toolbar buttons at their natural height with a compact chevron; remove the purple strip from the folded rail while retaining drag-to-open
 - Add 89 passing DOM/Chrome-API regression cases; signed-in Odoo and real browser layout have not been exercised
+
+Rewrite details:
+- Replace the global chatter manager with a controller for each mounted panel and form-scoped state, including independent dialog handling
+- Centralize URL identity, draft-to-saved transitions, debug normalization and host-permission matching in shared.js
+- Load settings before mounting controls, then apply storage events synchronously with revision guards for stale reads
+- Give controls, drags, observers and support enhancements explicit cleanup; suspend work on pagehide and resume on pageshow
+- Filter extension-owned DOM mutations and scope CSS to managed layouts, retaining Odoo's native nodes, classes and action handlers
+- Move concurrent recents/pins updates and debug reload protection into serialized service-worker operations
+- Read only public Odoo bootstrap scalars in MAIN world, targeting the sending document rather than whichever page currently occupies the tab
+- Add an asynchronous Chrome-API/jsdom harness covering lifecycle transitions, races, failures and teardown; no runtime npm dependencies or build step
+
+See docs/reliability-review.md for the full issue mapping, Odoo source references and validation limits. The GitHub release is separate from publication to the Chrome Web Store.
 
 V2.0.3
 - Fix chevron missing in folded mode after native below-chatter detection
